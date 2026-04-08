@@ -1,5 +1,6 @@
-const { app, BrowserWindow } = require('electron')
+const { app, BrowserWindow, ipcMain } = require('electron')
 const path = require('path')
+const { createServer } = require('./server')
 
 let mainWindow
 
@@ -26,8 +27,32 @@ function createWindow() {
   })
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   createWindow()
+
+  try {
+    const { ip, port } = await createServer(
+      () => {
+        // iPhone подключился
+        mainWindow?.webContents.send('phone-connected')
+      },
+      () => {
+        // iPhone отключился
+        mainWindow?.webContents.send('phone-disconnected')
+      }
+    )
+
+    // Сообщаем renderer адрес сервера
+    mainWindow.webContents.on('did-finish-load', () => {
+      mainWindow.webContents.send('server-ready', { ip, port })
+    })
+
+    // Если окно уже загружено до старта сервера
+    mainWindow?.webContents.send('server-ready', { ip, port })
+
+  } catch (err) {
+    console.error('[main] Failed to start server:', err)
+  }
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

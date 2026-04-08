@@ -1,6 +1,9 @@
-const { contextBridge } = require('electron')
+const { contextBridge, ipcRenderer } = require('electron')
 
-// В будущих этапах здесь будем пробрасывать API из main процесса в renderer
 contextBridge.exposeInMainWorld('phonecam', {
-  platform: process.platform
+  platform: process.platform,
+
+  onServerReady: (cb) => ipcRenderer.on('server-ready', (_, data) => cb(data)),
+  onPhoneConnected: (cb) => ipcRenderer.on('phone-connected', () => cb()),
+  onPhoneDisconnected: (cb) => ipcRenderer.on('phone-disconnected', () => cb()),
 })
