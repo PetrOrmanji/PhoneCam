@@ -7,14 +7,15 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     :root {
-      --bg: #0a0a0a;
-      --surface: #141414;
-      --border: #1e1e1e;
-      --text: #f0f0f0;
-      --text-dim: #444;
-      --text-mid: #888;
-      --accent: #e8ff00;
-      --green: #4eff91;
+      --bg:         #0a0a0a;
+      --surface:    #111;
+      --surface2:   #161616;
+      --border:     #1e1e1e;
+      --text:       #f0f0f0;
+      --text-dim:   #3a3a3a;
+      --text-mid:   #666;
+      --accent:     #e8ff00;
+      --green:      #4eff91;
     }
 
     html, body {
@@ -26,22 +27,97 @@
       user-select: none;
     }
 
-    /* ── Waiting screen ── */
+    /* ─── Wait screen ─────────────────────────── */
     #waitScreen {
       position: absolute;
       inset: 0;
       display: flex;
       flex-direction: column;
-      align-items: center;
-      justify-content: center;
       -webkit-app-region: drag;
       transition: opacity 0.5s;
     }
 
-    #waitScreen.hidden {
-      opacity: 0;
-      pointer-events: none;
+    #waitScreen.hidden { opacity: 0; pointer-events: none; }
+
+    .titlebar { height: 28px; flex-shrink: 0; }
+
+    .wait-body {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 64px;
+      padding: 32px 64px;
+      -webkit-app-region: no-drag;
     }
+
+    /* Left: QR + address */
+    .connect-panel {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      opacity: 0;
+      transform: translateY(6px);
+      transition: opacity 0.4s, transform 0.4s;
+    }
+
+    .connect-panel.visible { opacity: 1; transform: translateY(0); }
+
+    .qr-wrap {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px;
+      line-height: 0;
+    }
+
+    .qr-wrap img { width: 148px; height: 148px; border-radius: 4px; }
+
+    .address-block {
+      text-align: center;
+    }
+
+    .address-label {
+      font-size: 10px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 6px;
+    }
+
+    .address-text {
+      font-size: 15px;
+      font-weight: 400;
+      color: var(--text-mid);
+      letter-spacing: 0.01em;
+    }
+
+    .address-text span { color: var(--accent); font-weight: 500; }
+
+    /* Divider */
+    .divider {
+      width: 1px;
+      height: 160px;
+      background: var(--border);
+      flex-shrink: 0;
+      opacity: 0;
+      transition: opacity 0.4s 0.1s;
+    }
+
+    .divider.visible { opacity: 1; }
+
+    /* Right: status */
+    .status-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+      opacity: 0;
+      transform: translateY(6px);
+      transition: opacity 0.4s 0.1s, transform 0.4s 0.1s;
+    }
+
+    .status-panel.visible { opacity: 1; transform: translateY(0); }
 
     .logo {
       font-size: 11px;
@@ -49,7 +125,6 @@
       letter-spacing: 0.25em;
       text-transform: uppercase;
       color: var(--text-dim);
-      margin-bottom: 56px;
     }
 
     .logo span { color: var(--accent); }
@@ -57,8 +132,7 @@
     .status-row {
       display: flex;
       align-items: center;
-      gap: 8px;
-      margin-bottom: 40px;
+      gap: 10px;
     }
 
     .dot {
@@ -66,64 +140,53 @@
       height: 7px;
       border-radius: 50%;
       background: var(--text-dim);
+      flex-shrink: 0;
       transition: background 0.4s;
     }
 
     .dot.ready     { background: var(--accent); }
-    .dot.connected { background: var(--green); animation: pulse 2s infinite; }
+    .dot.streaming { background: var(--green); animation: pulse 2s infinite; }
 
     @keyframes pulse {
       0%, 100% { opacity: 1; }
-      50%       { opacity: 0.35; }
+      50%       { opacity: 0.3; }
     }
 
-    .status-label {
-      font-size: 13px;
-      color: var(--text-mid);
-      letter-spacing: 0.02em;
-    }
-
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 28px 36px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 12px;
-      opacity: 0;
-      transform: translateY(8px);
-      transition: opacity 0.4s, transform 0.4s;
-      -webkit-app-region: no-drag;
-    }
-
-    .card.visible { opacity: 1; transform: translateY(0); }
-
-    .card-label {
-      font-size: 11px;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: var(--text-dim);
-    }
-
-    .address {
+    .status-text {
       font-size: 22px;
       font-weight: 300;
-      letter-spacing: -0.01em;
+      letter-spacing: -0.02em;
       color: var(--text);
     }
 
-    .address span { color: var(--accent); font-weight: 500; }
-
-    .hint {
-      font-size: 12px;
-      color: var(--text-dim);
-      text-align: center;
-      line-height: 1.6;
+    .hint-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
     }
 
-    /* ── Video screen ── */
+    .hint-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+
+    .hint-num {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      color: var(--text-dim);
+      flex-shrink: 0;
+    }
+
+    /* ─── Video screen ────────────────────────── */
     #videoScreen {
       position: absolute;
       inset: 0;
@@ -145,37 +208,31 @@
       background: #000;
     }
 
-    /* Overlay: shown on hover */
+    /* Overlay on hover */
     #overlay {
       position: absolute;
       inset: 0;
       display: flex;
-      flex-direction: column;
-      justify-content: flex-end;
+      align-items: flex-end;
       padding: 20px;
       opacity: 0;
-      transition: opacity 0.3s;
-      background: linear-gradient(to top, rgba(0,0,0,0.5) 0%, transparent 60%);
+      transition: opacity 0.25s;
+      background: linear-gradient(to top, rgba(0,0,0,0.45) 0%, transparent 50%);
       -webkit-app-region: drag;
     }
 
     #videoScreen:hover #overlay { opacity: 1; }
 
-    .overlay-bottom {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      -webkit-app-region: no-drag;
-    }
-
     .live-badge {
       display: flex;
       align-items: center;
-      gap: 5px;
-      background: rgba(0,0,0,0.5);
-      border: 1px solid rgba(255,255,255,0.1);
+      gap: 6px;
+      background: rgba(0,0,0,0.55);
+      border: 1px solid rgba(255,255,255,0.08);
+      backdrop-filter: blur(8px);
       border-radius: 100px;
-      padding: 5px 12px;
+      padding: 6px 14px;
+      -webkit-app-region: no-drag;
     }
 
     .live-dot {
@@ -191,106 +248,138 @@
       font-weight: 600;
       letter-spacing: 0.1em;
       text-transform: uppercase;
-      color: rgba(255,255,255,0.7);
+      color: rgba(255,255,255,0.6);
     }
 
-    .reconnect-badge {
+    .warn-badge {
       display: none;
       align-items: center;
-      gap: 5px;
-      background: rgba(0,0,0,0.5);
+      gap: 6px;
+      background: rgba(0,0,0,0.55);
       border: 1px solid rgba(255,255,255,0.08);
+      backdrop-filter: blur(8px);
       border-radius: 100px;
-      padding: 5px 12px;
+      padding: 6px 14px;
+      margin-left: 8px;
       font-size: 11px;
-      color: rgba(255,255,255,0.4);
+      color: rgba(255,255,255,0.35);
       letter-spacing: 0.06em;
+      -webkit-app-region: no-drag;
     }
 
-    .reconnect-badge.visible { display: flex; }
+    .warn-badge.visible { display: flex; }
   </style>
 </head>
 <body>
 
-  <!-- Waiting screen -->
-  <div id="waitScreen">
-    <div class="logo">Phone<span>Cam</span></div>
+<!-- ─── Wait screen ─────────────────────────── -->
+<div id="waitScreen">
+  <div class="titlebar"></div>
+  <div class="wait-body">
 
-    <div class="status-row">
-      <div class="dot" id="dot"></div>
-      <span class="status-label" id="statusLabel">Starting server...</span>
-    </div>
-
-    <div class="card" id="card">
-      <div class="card-label">Open on iPhone</div>
-      <div class="address" id="address">—</div>
-      <div class="hint">Same Wi-Fi &nbsp;·&nbsp; tap "Visit Website" on cert warning</div>
-    </div>
-  </div>
-
-  <!-- Video screen -->
-  <div id="videoScreen">
-    <video id="remoteVideo" autoplay playsinline></video>
-    <div id="overlay">
-      <div class="overlay-bottom">
-        <div class="live-badge">
-          <div class="live-dot"></div>
-          <span class="live-text">Live</span>
-        </div>
-        <div class="reconnect-badge" id="reconnectBadge">Reconnecting...</div>
+    <div class="connect-panel" id="connectPanel">
+      <div class="qr-wrap">
+        <img id="qrImg" src="" alt="QR" />
+      </div>
+      <div class="address-block">
+        <div class="address-label">Open on iPhone</div>
+        <div class="address-text" id="addressText">—</div>
       </div>
     </div>
+
+    <div class="divider" id="divider"></div>
+
+    <div class="status-panel" id="statusPanel">
+      <div class="logo">Phone<span>Cam</span></div>
+
+      <div class="status-row">
+        <div class="dot" id="dot"></div>
+        <span class="status-text" id="statusText">Starting...</span>
+      </div>
+
+      <div class="hint-list" id="hintList" style="display:none">
+        <div class="hint-item">
+          <div class="hint-num">1</div>
+          Same Wi-Fi network
+        </div>
+        <div class="hint-item">
+          <div class="hint-num">2</div>
+          Scan QR or type address
+        </div>
+        <div class="hint-item">
+          <div class="hint-num">3</div>
+          Tap "Visit Website" on cert warning
+        </div>
+      </div>
+    </div>
+
   </div>
+</div>
+
+<!-- ─── Video screen ────────────────────────── -->
+<div id="videoScreen">
+  <video id="remoteVideo" autoplay playsinline></video>
+  <div id="overlay">
+    <div class="live-badge">
+      <div class="live-dot"></div>
+      <span class="live-text">Live</span>
+    </div>
+    <div class="warn-badge" id="warnBadge">Reconnecting...</div>
+  </div>
+</div>
 
 <script>
-const dot           = document.getElementById('dot')
-const statusLabel   = document.getElementById('statusLabel')
-const card          = document.getElementById('card')
-const addressEl     = document.getElementById('address')
-const waitScreen    = document.getElementById('waitScreen')
-const videoScreen   = document.getElementById('videoScreen')
-const remoteVideo   = document.getElementById('remoteVideo')
-const reconnectBadge = document.getElementById('reconnectBadge')
+const dot          = document.getElementById('dot')
+const statusText   = document.getElementById('statusText')
+const connectPanel = document.getElementById('connectPanel')
+const divider      = document.getElementById('divider')
+const statusPanel  = document.getElementById('statusPanel')
+const qrImg        = document.getElementById('qrImg')
+const addressText  = document.getElementById('addressText')
+const hintList     = document.getElementById('hintList')
+const waitScreen   = document.getElementById('waitScreen')
+const videoScreen  = document.getElementById('videoScreen')
+const remoteVideo  = document.getElementById('remoteVideo')
+const warnBadge    = document.getElementById('warnBadge')
 
 let pc = null
 let pendingCandidates = []
 
 // ── Server ready ──────────────────────────────
-window.phonecam.onServerReady(({ ip, phonePort }) => {
-  console.log('[pc] server-ready', ip, phonePort)
-  addressEl.innerHTML = `https://${ip}<span>:${phonePort}</span>`
-  card.classList.add('visible')
+window.phonecam.onServerReady(({ ip, phonePort, qr }) => {
+  qrImg.src = qr
+  addressText.innerHTML = `https://${ip}<span>:${phonePort}</span>`
+  connectPanel.classList.add('visible')
+  divider.classList.add('visible')
+  statusPanel.classList.add('visible')
   dot.className = 'dot ready'
-  statusLabel.textContent = 'Waiting for iPhone...'
+  statusText.textContent = 'Waiting for iPhone'
+  hintList.style.display = 'flex'
 })
 
 window.phonecam.onPhoneConnected(() => {
-  console.log('[pc] phone connected')
-  dot.className = 'dot connected'
-  statusLabel.textContent = 'Streaming'
+  dot.className = 'dot streaming'
+  statusText.textContent = 'Connecting...'
 })
 
 window.phonecam.onPhoneDisconnected(() => {
-  console.log('[pc] phone disconnected')
-  // Сбрасываем UI только если WebRTC стрим не активен
   const streaming = pc && pc.connectionState === 'connected'
   if (!streaming) {
     dot.className = 'dot ready'
-    statusLabel.textContent = 'Waiting for iPhone...'
+    statusText.textContent = 'Waiting for iPhone'
     videoScreen.classList.remove('visible')
     waitScreen.classList.remove('hidden')
     if (pc) { pc.close(); pc = null }
   }
 })
 
-// ── Signaling через IPC ───────────────────────
+// ── Signaling via IPC ─────────────────────────
 window.phonecam.onPhoneSignal(async (msg) => {
-  console.log('[pc] phone-signal received:', msg.type ?? 'candidate')
   if (msg.type === 'offer') {
     await handleOffer(msg)
   } else if (msg.candidate !== undefined) {
     if (pc && pc.remoteDescription) {
-      await pc.addIceCandidate(new RTCIceCandidate(msg)).catch(e => console.warn('[pc] addIceCandidate error:', e))
+      await pc.addIceCandidate(new RTCIceCandidate(msg)).catch(() => {})
     } else {
       pendingCandidates.push(msg)
     }
@@ -299,7 +388,6 @@ window.phonecam.onPhoneSignal(async (msg) => {
 
 // ── WebRTC ────────────────────────────────────
 async function handleOffer(offer) {
-  console.log('[pc] handleOffer start')
   if (pc) { pc.close() }
   pendingCandidates = []
 
@@ -308,38 +396,30 @@ async function handleOffer(offer) {
   })
 
   pc.ontrack = (e) => {
-    console.log('[pc] ontrack:', e.track.kind)
     if (e.track.kind === 'video') {
       remoteVideo.srcObject = e.streams[0]
       waitScreen.classList.add('hidden')
       videoScreen.classList.add('visible')
-      reconnectBadge.classList.remove('visible')
+      warnBadge.classList.remove('visible')
+      dot.className = 'dot streaming'
+      statusText.textContent = 'Streaming'
     }
   }
 
   pc.onicecandidate = ({ candidate }) => {
-    if (candidate) {
-      console.log('[pc] sending ICE candidate')
-      window.phonecam.sendSignal(candidate.toJSON())
-    }
+    if (candidate) window.phonecam.sendSignal(candidate.toJSON())
   }
 
   pc.onconnectionstatechange = () => {
-    console.log('[pc] connection state:', pc.connectionState)
     const s = pc.connectionState
     if (s === 'failed' || s === 'disconnected') {
-      reconnectBadge.classList.add('visible')
+      warnBadge.classList.add('visible')
     } else if (s === 'connected') {
-      reconnectBadge.classList.remove('visible')
+      warnBadge.classList.remove('visible')
     }
   }
 
-  pc.oniceconnectionstatechange = () => {
-    console.log('[pc] ICE state:', pc.iceConnectionState)
-  }
-
   await pc.setRemoteDescription(new RTCSessionDescription(offer))
-  console.log('[pc] remote description set, applying', pendingCandidates.length, 'queued candidates')
 
   for (const c of pendingCandidates) {
     await pc.addIceCandidate(new RTCIceCandidate(c)).catch(() => {})
@@ -348,7 +428,6 @@ async function handleOffer(offer) {
 
   const answer = await pc.createAnswer()
   await pc.setLocalDescription(answer)
-  console.log('[pc] answer created, sending to phone')
   window.phonecam.sendSignal(answer)
 }
 </script>

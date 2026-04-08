@@ -1,5 +1,6 @@
 const { app, BrowserWindow, ipcMain } = require('electron')
 const path = require('path')
+const QRCode = require('qrcode')
 const { createServer } = require('./server')
 
 let mainWindow
@@ -16,8 +17,8 @@ app.on('certificate-error', (event, webContents, url, error, certificate, callba
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 1000,
-    height: 700,
+    width: 960,
+    height: 640,
     minWidth: 700,
     minHeight: 500,
     backgroundColor: '#0a0a0a',
@@ -37,28 +38,27 @@ function createWindow() {
 app.whenReady().then(async () => {
   createWindow()
 
-  // Renderer → Main: signaling ответ (answer / ICE от PC)
   ipcMain.on('pc-signal', (_, msg) => {
     sendToPhone?.(msg)
   })
 
   try {
     const result = await createServer({
-      onPhoneConnected: () => {
-        mainWindow?.webContents.send('phone-connected')
-      },
-      onPhoneDisconnected: () => {
-        mainWindow?.webContents.send('phone-disconnected')
-      },
-      onPhoneMessage: (msg) => {
-        // Main → Renderer: signaling от iPhone (offer / ICE от телефона)
-        mainWindow?.webContents.send('phone-signal', msg)
-      }
+      onPhoneConnected: () => mainWindow?.webContents.send('phone-connected'),
+      onPhoneDisconnected: () => mainWindow?.webContents.send('phone-disconnected'),
+      onPhoneMessage: (msg) => mainWindow?.webContents.send('phone-signal', msg)
     })
 
     sendToPhone = result.sendToPhone
 
-    const serverInfo = { ip: result.ip, phonePort: result.port }
+    const url = `https://${result.ip}:${result.port}`
+    const qrDataUrl = await QRCode.toDataURL(url, {
+      width: 200,
+      margin: 1,
+      color: { dark: '#e8ff00', light: '#141414' }
+    })
+
+    const serverInfo = { ip: result.ip, phonePort: result.port, qr: qrDataUrl }
 
     mainWindow.webContents.on('did-finish-load', () => {
       mainWindow.webContents.send('server-ready', serverInfo)
