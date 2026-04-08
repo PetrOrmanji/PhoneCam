@@ -2,25 +2,498 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>PhoneCam</title>
   <style>
-    body {
-      background: #0a0a0a;
-      color: #f0f0f0;
-      font-family: -apple-system, sans-serif;
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    :root {
+      --bg: #0a0a0a;
+      --surface: #141414;
+      --border: #1e1e1e;
+      --text: #f0f0f0;
+      --text-dim: #444;
+      --text-mid: #888;
+      --accent: #e8ff00;
+      --green: #4eff91;
+      --red: #ff5c5c;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      overscroll-behavior: none;
+    }
+
+    /* ── Layout ── */
+    #app {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      padding: env(safe-area-inset-top, 20px) env(safe-area-inset-right, 0)
+               env(safe-area-inset-bottom, 0) env(safe-area-inset-left, 0);
+    }
+
+    /* ── Start screen ── */
+    #startScreen {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+      padding: 40px 32px;
+    }
+
+    .logo {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 56px;
+    }
+
+    .logo span { color: var(--accent); }
+
+    .start-title {
+      font-size: 28px;
+      font-weight: 300;
+      letter-spacing: -0.02em;
+      color: var(--text);
+      margin-bottom: 12px;
+      text-align: center;
+    }
+
+    .start-sub {
+      font-size: 13px;
+      color: var(--text-dim);
+      text-align: center;
+      line-height: 1.5;
+      margin-bottom: 48px;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #000;
+      border: none;
+      border-radius: 100px;
+      padding: 16px 48px;
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+
+    .btn-primary:active { opacity: 0.8; transform: scale(0.97); }
+
+    /* ── Camera screen ── */
+    #cameraScreen {
+      flex: 1;
+      display: none;
+      flex-direction: column;
+    }
+
+    /* Video preview */
+    #videoWrap {
+      position: relative;
+      flex: 1;
+      overflow: hidden;
+      background: #000;
+    }
+
+    #preview {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    /* Status bar overlay */
+    #statusBar {
+      position: absolute;
+      top: 12px;
+      left: 0;
+      right: 0;
       display: flex;
       align-items: center;
       justify-content: center;
-      height: 100vh;
-      margin: 0;
-      font-size: 18px;
-      font-weight: 300;
-      letter-spacing: -0.01em;
+      gap: 6px;
+      pointer-events: none;
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--text-dim);
+      transition: background 0.3s;
+    }
+
+    .status-dot.connecting { background: var(--accent); }
+    .status-dot.live       { background: var(--green); animation: blink 2s infinite; }
+    .status-dot.error      { background: var(--red); }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.3; }
+    }
+
+    .status-text {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.6);
+      text-shadow: 0 1px 4px rgba(0,0,0,0.8);
+    }
+
+    /* ── Controls panel ── */
+    #controls {
+      background: var(--bg);
+      border-top: 1px solid var(--border);
+      padding: 16px 20px 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    /* Camera list */
+    #cameraList {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 2px;
+      scrollbar-width: none;
+    }
+
+    #cameraList::-webkit-scrollbar { display: none; }
+
+    .cam-btn {
+      flex-shrink: 0;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      color: var(--text-mid);
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+      padding: 7px 14px;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+
+    .cam-btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #000;
+    }
+
+    .cam-btn:active { opacity: 0.7; }
+
+    /* Quality + bottom row */
+    .bottom-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .section-label {
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 8px;
+    }
+
+    /* Quality toggle */
+    .quality-toggle {
+      display: flex;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      overflow: hidden;
+    }
+
+    .q-btn {
+      background: none;
+      border: none;
+      color: var(--text-mid);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      padding: 7px 18px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .q-btn.active {
+      background: var(--accent);
+      color: #000;
+      border-radius: 100px;
+    }
+
+    .q-btn:active { opacity: 0.7; }
+
+    /* Reconnect hint */
+    .reconnect-hint {
+      font-size: 11px;
+      color: var(--text-dim);
+      text-align: right;
     }
   </style>
 </head>
 <body>
-  Connected — camera coming in Stage 3
+<div id="app">
+
+  <!-- ── Start screen ── -->
+  <div id="startScreen">
+    <div class="logo">Phone<span>Cam</span></div>
+    <div class="start-title">Allow camera access</div>
+    <div class="start-sub">Tap below to grant access<br>and start streaming</div>
+    <button class="btn-primary" id="startBtn">Start Camera</button>
+  </div>
+
+  <!-- ── Camera screen ── -->
+  <div id="cameraScreen">
+    <div id="videoWrap">
+      <video id="preview" autoplay playsinline muted></video>
+      <div id="statusBar">
+        <div class="status-dot" id="statusDot"></div>
+        <span class="status-text" id="statusText">Connecting...</span>
+      </div>
+    </div>
+
+    <div id="controls">
+      <div>
+        <div class="section-label">Camera</div>
+        <div id="cameraList"></div>
+      </div>
+
+      <div class="bottom-row">
+        <div>
+          <div class="section-label">Quality</div>
+          <div class="quality-toggle">
+            <button class="q-btn" id="q720" onclick="setQuality('720p')">720p</button>
+            <button class="q-btn active" id="q1080" onclick="setQuality('1080p')">1080p</button>
+          </div>
+        </div>
+        <div class="reconnect-hint" id="reconnectHint"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+<script>
+// ─────────────────────────────────────────────
+// State
+// ─────────────────────────────────────────────
+let cameras       = []
+let activeCamIdx  = 0
+let quality       = '1080p'
+let stream        = null
+let pc            = null
+let ws            = null
+let wsReady       = false
+let reconnectTimer = null
+
+const WS_URL = `wss://${location.host}?type=phone`
+
+// ─────────────────────────────────────────────
+// Elements
+// ─────────────────────────────────────────────
+const startScreen  = document.getElementById('startScreen')
+const cameraScreen = document.getElementById('cameraScreen')
+const preview      = document.getElementById('preview')
+const cameraList   = document.getElementById('cameraList')
+const statusDot    = document.getElementById('statusDot')
+const statusText   = document.getElementById('statusText')
+const reconnectHint = document.getElementById('reconnectHint')
+
+// ─────────────────────────────────────────────
+// Start
+// ─────────────────────────────────────────────
+document.getElementById('startBtn').addEventListener('click', async () => {
+  try {
+    // First call to get permission — labels are empty without it
+    const tmp = await navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+    tmp.getTracks().forEach(t => t.stop())
+
+    await enumerateCameras()
+    startScreen.style.display = 'none'
+    cameraScreen.style.display = 'flex'
+
+    await startCamera()
+    connectSignaling()
+  } catch (e) {
+    alert('Camera access denied. Please allow camera in Safari settings.')
+  }
+})
+
+// ─────────────────────────────────────────────
+// Camera enumeration
+// ─────────────────────────────────────────────
+async function enumerateCameras() {
+  const devices = await navigator.mediaDevices.enumerateDevices()
+  cameras = devices.filter(d => d.kind === 'videoinput')
+
+  // Try to put front camera last
+  cameras.sort((a, b) => {
+    const aFront = a.label.toLowerCase().includes('front')
+    const bFront = b.label.toLowerCase().includes('front')
+    return aFront - bFront
+  })
+
+  renderCameraList()
+}
+
+function cameraLabel(cam, idx) {
+  const l = cam.label.toLowerCase()
+  if (l.includes('ultra') || l.includes('wide') && l.includes('back')) return 'Ultra Wide'
+  if (l.includes('telephoto'))   return 'Tele'
+  if (l.includes('front'))       return 'Front'
+  if (l.includes('back') || l.includes('rear') || l.includes('environment')) return 'Main'
+  return `Cam ${idx + 1}`
+}
+
+function renderCameraList() {
+  cameraList.innerHTML = ''
+  cameras.forEach((cam, idx) => {
+    const btn = document.createElement('button')
+    btn.className = 'cam-btn' + (idx === activeCamIdx ? ' active' : '')
+    btn.textContent = cameraLabel(cam, idx)
+    btn.addEventListener('click', () => switchCamera(idx))
+    cameraList.appendChild(btn)
+  })
+}
+
+// ─────────────────────────────────────────────
+// Camera stream
+// ─────────────────────────────────────────────
+function getConstraints() {
+  const [w, h] = quality === '1080p' ? [1920, 1080] : [1280, 720]
+  const cam = cameras[activeCamIdx]
+  return {
+    video: {
+      deviceId: cam ? { exact: cam.deviceId } : undefined,
+      width:  { ideal: w },
+      height: { ideal: h },
+      frameRate: { ideal: 60, max: 60 }
+    },
+    audio: false
+  }
+}
+
+async function startCamera() {
+  if (stream) stream.getTracks().forEach(t => t.stop())
+  stream = await navigator.mediaDevices.getUserMedia(getConstraints())
+  preview.srcObject = stream
+
+  // Replace track in existing peer connection if active
+  if (pc) {
+    const [videoTrack] = stream.getVideoTracks()
+    const sender = pc.getSenders().find(s => s.track?.kind === 'video')
+    if (sender) await sender.replaceTrack(videoTrack)
+  }
+}
+
+async function switchCamera(idx) {
+  activeCamIdx = idx
+  renderCameraList()
+  await startCamera()
+}
+
+async function setQuality(q) {
+  quality = q
+  document.getElementById('q720').classList.toggle('active', q === '720p')
+  document.getElementById('q1080').classList.toggle('active', q === '1080p')
+  await startCamera()
+}
+
+// ─────────────────────────────────────────────
+// WebSocket signaling
+// ─────────────────────────────────────────────
+function connectSignaling() {
+  clearTimeout(reconnectTimer)
+  if (ws) { ws.onclose = null; ws.close() }
+
+  setStatus('connecting')
+  ws = new WebSocket(WS_URL)
+
+  ws.onopen = async () => {
+    wsReady = true
+    reconnectHint.textContent = ''
+    await startPeerConnection()
+  }
+
+  ws.onmessage = async (e) => {
+    const msg = JSON.parse(e.data)
+    if (!pc) return
+
+    if (msg.type === 'answer') {
+      await pc.setRemoteDescription(new RTCSessionDescription(msg))
+    } else if (msg.candidate) {
+      await pc.addIceCandidate(new RTCIceCandidate(msg)).catch(() => {})
+    }
+  }
+
+  ws.onclose = () => {
+    wsReady = false
+    setStatus('error')
+    reconnectHint.textContent = 'Reconnecting...'
+    reconnectTimer = setTimeout(connectSignaling, 3000)
+  }
+
+  ws.onerror = () => ws.close()
+}
+
+// ─────────────────────────────────────────────
+// WebRTC
+// ─────────────────────────────────────────────
+async function startPeerConnection() {
+  if (pc) { pc.close() }
+
+  pc = new RTCPeerConnection({
+    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+  })
+
+  // Add local stream tracks
+  stream.getTracks().forEach(track => pc.addTrack(track, stream))
+
+  // Send ICE candidates to PC
+  pc.onicecandidate = ({ candidate }) => {
+    if (candidate && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify(candidate))
+    }
+  }
+
+  pc.onconnectionstatechange = () => {
+    const s = pc.connectionState
+    if (s === 'connected')     setStatus('live')
+    else if (s === 'failed')   { setStatus('error'); connectSignaling() }
+    else if (s === 'disconnected') setStatus('connecting')
+  }
+
+  // Create and send offer
+  const offer = await pc.createOffer()
+  await pc.setLocalDescription(offer)
+  ws.send(JSON.stringify(offer))
+}
+
+// ─────────────────────────────────────────────
+// Status UI
+// ─────────────────────────────────────────────
+function setStatus(state) {
+  statusDot.className = 'status-dot ' + state
+  statusText.textContent = {
+    connecting: 'Connecting...',
+    live:       'Live',
+    error:      'Disconnected'
+  }[state] ?? state
+}
+</script>
 </body>
 </html>

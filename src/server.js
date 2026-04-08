@@ -1,8 +1,9 @@
 const express = require('express')
 const { WebSocketServer } = require('ws')
-const http = require('http')
+const https = require('https')
 const os = require('os')
 const path = require('path')
+const selfsigned = require('selfsigned')
 
 const PORT = 9457
 
@@ -18,24 +19,47 @@ function getLocalIP() {
   return '127.0.0.1'
 }
 
-function createServer(onClientConnected, onClientDisconnected) {
-  const app = express()
-  const httpServer = http.createServer(app)
-  const wss = new WebSocketServer({ server: httpServer })
+async function generateCert(ip) {
+  const attrs = [{ name: 'commonName', value: 'PhoneCam' }]
+  const opts = {
+    keySize: 2048,
+    days: 3650,
+    extensions: [
+      { name: 'subjectAltName', altNames: [
+        { type: 7, ip },
+        { type: 7, ip: '127.0.0.1' }
+      ]}
+    ]
+  }
+  return selfsigned.generate(attrs, opts)
+}
 
-  // Отдаем страницу для iPhone
+async function createServer(onClientConnected, onClientDisconnected) {
+  const ip = getLocalIP()
+  const app = express()
+
+  const pems = await generateCert(ip)
+  const httpsServer = https.createServer(
+    { key: pems.private, cert: pems.cert },
+    app
+  )
+
+  const wss = new WebSocketServer({ server: httpsServer })
+
+  // Отдаём страницу для iPhone
   app.use(express.static(path.join(__dirname, 'phone')))
 
   // WebRTC signaling
-  let pcSocket = null   // WebSocket Electron-окна
-  let phoneSocket = null // WebSocket iPhone
+  let pcSocket    = null
+  let phoneSocket = null
 
   wss.on('connection', (ws, req) => {
-    const clientType = new URL(req.url, `http://localhost`).searchParams.get('type')
+    const url = new URL(req.url, `https://localhost`)
+    const clientType = url.searchParams.get('type')
 
     if (clientType === 'pc') {
       pcSocket = ws
-      console.log('[server] PC renderer connected to signaling')
+      console.log('[server] PC renderer connected')
     } else {
       phoneSocket = ws
       console.log('[server] iPhone connected')
@@ -50,8 +74,6 @@ function createServer(onClientConnected, onClientDisconnected) {
 
     ws.on('message', (data) => {
       const msg = JSON.parse(data)
-
-      // Пересылаем signaling сообщения между сторонами
       if (clientType === 'phone' && pcSocket?.readyState === 1) {
         pcSocket.send(JSON.stringify(msg))
       } else if (clientType === 'pc' && phoneSocket?.readyState === 1) {
@@ -59,18 +81,15 @@ function createServer(onClientConnected, onClientDisconnected) {
       }
     })
 
-    ws.on('error', (err) => {
-      console.error('[server] WS error:', err.message)
-    })
+    ws.on('error', (err) => console.error('[server] WS error:', err.message))
   })
 
   return new Promise((resolve, reject) => {
-    httpServer.listen(PORT, '0.0.0.0', () => {
-      const ip = getLocalIP()
-      console.log(`[server] Running at http://${ip}:${PORT}`)
+    httpsServer.listen(PORT, '0.0.0.0', () => {
+      console.log(`[server] HTTPS running at https://${ip}:${PORT}`)
       resolve({ ip, port: PORT })
     })
-    httpServer.on('error', reject)
+    httpsServer.on('error', reject)
   })
 }
 
