@@ -375,6 +375,17 @@ window.phonecam.onPhoneDisconnected(() => {
 
 // ── Signaling via IPC ─────────────────────────
 window.phonecam.onPhoneSignal(async (msg) => {
+  if (msg.type === 'stream-stop') {
+    // iPhone остановил трансляцию — возвращаемся в главное меню
+    if (pc) { pc.close(); pc = null }
+    remoteVideo.srcObject = null
+    videoScreen.classList.remove('visible')
+    waitScreen.classList.remove('hidden')
+    dot.className = 'dot ready'
+    statusText.textContent = 'Waiting for iPhone'
+    return
+  }
+
   if (msg.type === 'offer') {
     await handleOffer(msg)
   } else if (msg.candidate !== undefined) {
