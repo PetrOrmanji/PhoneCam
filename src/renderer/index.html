@@ -363,14 +363,12 @@ window.phonecam.onPhoneConnected(() => {
 })
 
 window.phonecam.onPhoneDisconnected(() => {
-  const streaming = pc && pc.connectionState === 'connected'
-  if (!streaming) {
-    dot.className = 'dot ready'
-    statusText.textContent = 'Waiting for iPhone'
-    videoScreen.classList.remove('visible')
-    waitScreen.classList.remove('hidden')
-    if (pc) { pc.close(); pc = null }
-  }
+  if (pc) { pc.close(); pc = null }
+  remoteVideo.srcObject = null
+  videoScreen.classList.remove('visible')
+  waitScreen.classList.remove('hidden')
+  dot.className = 'dot ready'
+  statusText.textContent = 'Waiting for iPhone'
 })
 
 // ── Signaling via IPC ─────────────────────────

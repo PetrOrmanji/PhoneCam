@@ -382,34 +382,48 @@ async function enumerateCameras() {
   const devices = await navigator.mediaDevices.enumerateDevices()
   const all = devices.filter(d => d.kind === 'videoinput')
 
-  // Оставляем только: фронт, основная задняя (1x), ультраширокая (0.5x)
   cameras = []
 
-  const front = all.find(d => d.label.toLowerCase().includes('front'))
-  const ultra = all.find(d => {
+  for (const d of all) {
     const l = d.label.toLowerCase()
-    return l.includes('ultra') || (l.includes('wide') && !l.includes('front'))
-  })
-  const main = all.find(d => {
-    const l = d.label.toLowerCase()
-    return (l.includes('back') || l.includes('rear') || l.includes('environment'))
-      && !l.includes('ultra') && !l.includes('telephoto') && !l.includes('wide')
-  }) || all.find(d => {
-    const l = d.label.toLowerCase()
-    return !l.includes('front') && !l.includes('ultra') && !l.includes('telephoto')
+
+    const isFront    = l.includes('front') || l.includes('передн') || l.includes('truedepth')
+    const isUltra    = l.includes('ultra') || l.includes('сверх')
+    const isWide     = l.includes('wide') || l.includes('широкоугол')
+    const isTele     = l.includes('telephoto') || l.includes('телеобъ')
+
+    if (isTele) continue  // телеобъектив — пропускаем
+
+    if (isFront) {
+      cameras.push({ device: d, label: 'Front' })
+    } else if (isUltra) {
+      cameras.push({ device: d, label: '0.5x' })
+    } else if (isWide) {
+      // "широкоугольная" без "сверх" = основная 1x
+      cameras.push({ device: d, label: '1x' })
+    }
+    // всё остальное (тройная, двойная, задней панели) — пропускаем
+  }
+
+
+  // Дедупликация: если одинаковый label — оставляем первую
+  const seen = new Set()
+  cameras = cameras.filter(c => {
+    if (seen.has(c.label)) return false
+    seen.add(c.label)
+    return true
   })
 
-  // Порядок: 0.5x → 1x → Front
-  if (ultra) cameras.push({ device: ultra, label: '0.5x' })
-  if (main)  cameras.push({ device: main,  label: '1x' })
-  if (front) cameras.push({ device: front, label: 'Front' })
+  // Сортировка: 0.5x → 1x → Front
+  const order = ['0.5x', '1x', 'Front']
+  cameras.sort((a, b) => order.indexOf(a.label) - order.indexOf(b.label))
 
-  // Если ничего не нашли — берём все
+  // Фолбэк если ничего не нашли
   if (cameras.length === 0) {
     cameras = all.map((d, i) => ({ device: d, label: `Cam ${i + 1}` }))
   }
 
-  // По умолчанию — основная задняя (1x)
+  // По умолчанию — 1x
   activeCamIdx = cameras.findIndex(c => c.label === '1x')
   if (activeCamIdx < 0) activeCamIdx = 0
 
