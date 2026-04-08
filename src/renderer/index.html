@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PhoneCam</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg: #0a0a0a;
+      --surface: #141414;
+      --border: #222;
+      --text: #f0f0f0;
+      --text-dim: #555;
+      --accent: #e8ff00;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+      -webkit-app-region: drag;
+    }
+
+    .logo {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 48px;
+    }
+
+    .logo span {
+      color: var(--accent);
+    }
+
+    .status {
+      font-size: 28px;
+      font-weight: 300;
+      color: var(--text-dim);
+      letter-spacing: -0.02em;
+    }
+
+    .hint {
+      margin-top: 16px;
+      font-size: 13px;
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+  <div class="logo">Phone<span>Cam</span></div>
+  <div class="status">Waiting for connection</div>
+  <div class="hint">Server starting...</div>
+</body>
+</html>

@@ -1,0 +1,44 @@
+{
+  "name": "phonecam",
+  "version": "1.0.0",
+  "description": "Use iPhone camera as PC webcam via WebRTC",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "build:mac": "electron-builder --mac",
+    "build:win": "electron-builder --win",
+    "build": "electron-builder --mac --win"
+  },
+  "devDependencies": {
+    "electron": "^30.0.0",
+    "electron-builder": "^24.0.0"
+  },
+  "dependencies": {
+    "express": "^4.18.0",
+    "ws": "^8.17.0"
+  },
+  "build": {
+    "appId": "com.phonecam.app",
+    "productName": "PhoneCam",
+    "directories": {
+      "output": "dist"
+    },
+    "mac": {
+      "category": "public.app-category.video",
+      "icon": "assets/icon.icns",
+      "target": [
+        { "target": "dmg", "arch": ["x64", "arm64"] }
+      ]
+    },
+    "win": {
+      "icon": "assets/icon.ico",
+      "target": [
+        { "target": "nsis", "arch": ["x64"] }
+      ]
+    },
+    "files": [
+      "src/**/*",
+      "assets/**/*"
+    ]
+  }
+}
