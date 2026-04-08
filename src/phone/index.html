@@ -444,7 +444,7 @@ function connectSignaling() {
     wsReady = false
     setStatus('error')
     reconnectHint.textContent = 'Reconnecting...'
-    reconnectTimer = setTimeout(connectSignaling, 3000)
+    reconnectTimer = setTimeout(connectSignaling, 500)
   }
 
   ws.onerror = () => ws.close()
@@ -463,7 +463,6 @@ async function startPeerConnection() {
   // Add local stream tracks
   stream.getTracks().forEach(track => pc.addTrack(track, stream))
 
-  // Send ICE candidates to PC
   pc.onicecandidate = ({ candidate }) => {
     if (candidate && ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify(candidate))
@@ -472,12 +471,18 @@ async function startPeerConnection() {
 
   pc.onconnectionstatechange = () => {
     const s = pc.connectionState
-    if (s === 'connected')     setStatus('live')
-    else if (s === 'failed')   { setStatus('error'); connectSignaling() }
-    else if (s === 'disconnected') setStatus('connecting')
+    if (s === 'connected')         setStatus('live')
+    else if (s === 'failed')       { setStatus('error'); connectSignaling() }
+    else if (s === 'disconnected') { setStatus('connecting'); connectSignaling() }
   }
 
-  // Create and send offer
+  pc.oniceconnectionstatechange = () => {
+    if (pc.iceConnectionState === 'failed') {
+      setStatus('error')
+      connectSignaling()
+    }
+  }
+
   const offer = await pc.createOffer()
   await pc.setLocalDescription(offer)
   ws.send(JSON.stringify(offer))

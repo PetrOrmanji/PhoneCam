@@ -5,7 +5,7 @@ const os = require('os')
 const path = require('path')
 const selfsigned = require('selfsigned')
 
-const PORT = 9457
+const PHONE_PORT = 9457
 
 function getLocalIP() {
   const interfaces = os.networkInterfaces()
@@ -34,63 +34,53 @@ async function generateCert(ip) {
   return selfsigned.generate(attrs, opts)
 }
 
-async function createServer(onClientConnected, onClientDisconnected) {
+async function createServer({ onPhoneConnected, onPhoneDisconnected, onPhoneMessage }) {
   const ip = getLocalIP()
   const app = express()
 
   const pems = await generateCert(ip)
-  const httpsServer = https.createServer(
-    { key: pems.private, cert: pems.cert },
-    app
-  )
-
+  const httpsServer = https.createServer({ key: pems.private, cert: pems.cert }, app)
   const wss = new WebSocketServer({ server: httpsServer })
 
-  // Отдаём страницу для iPhone
   app.use(express.static(path.join(__dirname, 'phone')))
 
-  // WebRTC signaling
-  let pcSocket    = null
   let phoneSocket = null
 
-  wss.on('connection', (ws, req) => {
-    const url = new URL(req.url, `https://localhost`)
-    const clientType = url.searchParams.get('type')
-
-    if (clientType === 'pc') {
-      pcSocket = ws
-      console.log('[server] PC renderer connected')
-    } else {
-      phoneSocket = ws
-      console.log('[server] iPhone connected')
-      onClientConnected?.()
-
-      ws.on('close', () => {
-        phoneSocket = null
-        console.log('[server] iPhone disconnected')
-        onClientDisconnected?.()
-      })
-    }
+  wss.on('connection', (ws) => {
+    phoneSocket = ws
+    console.log('[server] iPhone connected')
+    onPhoneConnected?.()
 
     ws.on('message', (data) => {
-      const msg = JSON.parse(data)
-      if (clientType === 'phone' && pcSocket?.readyState === 1) {
-        pcSocket.send(JSON.stringify(msg))
-      } else if (clientType === 'pc' && phoneSocket?.readyState === 1) {
-        phoneSocket.send(JSON.stringify(msg))
-      }
+      // Передаём signaling сообщение от iPhone в main процесс
+      onPhoneMessage?.(JSON.parse(data))
     })
 
-    ws.on('error', (err) => console.error('[server] WS error:', err.message))
+    ws.on('close', () => {
+      phoneSocket = null
+      console.log('[server] iPhone disconnected')
+      onPhoneDisconnected?.()
+    })
+
+    ws.on('error', (e) => console.error('[phone ws]', e.message))
   })
 
-  return new Promise((resolve, reject) => {
-    httpsServer.listen(PORT, '0.0.0.0', () => {
-      console.log(`[server] HTTPS running at https://${ip}:${PORT}`)
-      resolve({ ip, port: PORT })
+  // Отправить signaling сообщение на iPhone
+  function sendToPhone(msg) {
+    if (phoneSocket?.readyState === 1) {
+      phoneSocket.send(JSON.stringify(msg))
+    }
+  }
+
+  await new Promise((resolve, reject) => {
+    httpsServer.listen(PHONE_PORT, '0.0.0.0', () => {
+      console.log(`[server] HTTPS → https://${ip}:${PHONE_PORT}`)
+      resolve()
     })
     httpsServer.on('error', reject)
   })
+
+  return { ip, port: PHONE_PORT, sendToPhone }
 }
 
-module.exports = { createServer, getLocalIP, PORT }
+module.exports = { createServer, PHONE_PORT }

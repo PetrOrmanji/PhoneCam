@@ -2,14 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>PhoneCam</title>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
 
     :root {
       --bg: #0a0a0a;
@@ -20,34 +15,32 @@
       --text-mid: #888;
       --accent: #e8ff00;
       --green: #4eff91;
-      --red: #ff4e4e;
     }
 
-    body {
+    html, body {
+      height: 100%;
       background: var(--bg);
       color: var(--text);
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-      -webkit-app-region: drag;
       overflow: hidden;
+      user-select: none;
     }
 
-    /* Titlebar space for macOS traffic lights */
-    .titlebar {
-      height: 28px;
-      flex-shrink: 0;
-    }
-
-    .content {
-      flex: 1;
+    /* ── Waiting screen ── */
+    #waitScreen {
+      position: absolute;
+      inset: 0;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 0;
-      -webkit-app-region: no-drag;
+      -webkit-app-region: drag;
+      transition: opacity 0.5s;
+    }
+
+    #waitScreen.hidden {
+      opacity: 0;
+      pointer-events: none;
     }
 
     .logo {
@@ -59,11 +52,8 @@
       margin-bottom: 56px;
     }
 
-    .logo span {
-      color: var(--accent);
-    }
+    .logo span { color: var(--accent); }
 
-    /* Status dot + label */
     .status-row {
       display: flex;
       align-items: center;
@@ -79,13 +69,12 @@
       transition: background 0.4s;
     }
 
-    .dot.waiting  { background: var(--text-dim); }
-    .dot.ready    { background: var(--accent); }
+    .dot.ready     { background: var(--accent); }
     .dot.connected { background: var(--green); animation: pulse 2s infinite; }
 
     @keyframes pulse {
       0%, 100% { opacity: 1; }
-      50% { opacity: 0.4; }
+      50%       { opacity: 0.35; }
     }
 
     .status-label {
@@ -94,7 +83,6 @@
       letter-spacing: 0.02em;
     }
 
-    /* Connection card */
     .card {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -107,12 +95,10 @@
       opacity: 0;
       transform: translateY(8px);
       transition: opacity 0.4s, transform 0.4s;
+      -webkit-app-region: no-drag;
     }
 
-    .card.visible {
-      opacity: 1;
-      transform: translateY(0);
-    }
+    .card.visible { opacity: 1; transform: translateY(0); }
 
     .card-label {
       font-size: 11px;
@@ -122,83 +108,249 @@
     }
 
     .address {
-      font-size: 26px;
+      font-size: 22px;
       font-weight: 300;
       letter-spacing: -0.01em;
       color: var(--text);
     }
 
-    .address span {
-      color: var(--accent);
-      font-weight: 500;
-    }
+    .address span { color: var(--accent); font-weight: 500; }
 
     .hint {
       font-size: 12px;
       color: var(--text-dim);
-      margin-top: 4px;
+      text-align: center;
+      line-height: 1.6;
     }
 
-    /* Connected overlay message */
-    .connected-msg {
-      font-size: 13px;
-      color: var(--green);
-      letter-spacing: 0.04em;
-      margin-top: 24px;
+    /* ── Video screen ── */
+    #videoScreen {
+      position: absolute;
+      inset: 0;
       opacity: 0;
-      transition: opacity 0.4s;
+      transition: opacity 0.6s;
+      pointer-events: none;
     }
 
-    .connected-msg.visible {
+    #videoScreen.visible {
       opacity: 1;
+      pointer-events: all;
     }
+
+    #remoteVideo {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      background: #000;
+    }
+
+    /* Overlay: shown on hover */
+    #overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: 20px;
+      opacity: 0;
+      transition: opacity 0.3s;
+      background: linear-gradient(to top, rgba(0,0,0,0.5) 0%, transparent 60%);
+      -webkit-app-region: drag;
+    }
+
+    #videoScreen:hover #overlay { opacity: 1; }
+
+    .overlay-bottom {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      -webkit-app-region: no-drag;
+    }
+
+    .live-badge {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(0,0,0,0.5);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 100px;
+      padding: 5px 12px;
+    }
+
+    .live-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--green);
+      animation: pulse 2s infinite;
+    }
+
+    .live-text {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.7);
+    }
+
+    .reconnect-badge {
+      display: none;
+      align-items: center;
+      gap: 5px;
+      background: rgba(0,0,0,0.5);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 100px;
+      padding: 5px 12px;
+      font-size: 11px;
+      color: rgba(255,255,255,0.4);
+      letter-spacing: 0.06em;
+    }
+
+    .reconnect-badge.visible { display: flex; }
   </style>
 </head>
 <body>
-  <div class="titlebar"></div>
 
-  <div class="content">
+  <!-- Waiting screen -->
+  <div id="waitScreen">
     <div class="logo">Phone<span>Cam</span></div>
 
     <div class="status-row">
-      <div class="dot waiting" id="dot"></div>
+      <div class="dot" id="dot"></div>
       <span class="status-label" id="statusLabel">Starting server...</span>
     </div>
 
     <div class="card" id="card">
       <div class="card-label">Open on iPhone</div>
       <div class="address" id="address">—</div>
-      <div class="hint">Same Wi-Fi · tap "Visit Website" on cert warning</div>
+      <div class="hint">Same Wi-Fi &nbsp;·&nbsp; tap "Visit Website" on cert warning</div>
     </div>
-
-    <div class="connected-msg" id="connectedMsg">iPhone connected</div>
   </div>
 
-  <script>
-    const dot         = document.getElementById('dot')
-    const statusLabel = document.getElementById('statusLabel')
-    const card        = document.getElementById('card')
-    const addressEl   = document.getElementById('address')
-    const connectedMsg = document.getElementById('connectedMsg')
+  <!-- Video screen -->
+  <div id="videoScreen">
+    <video id="remoteVideo" autoplay playsinline></video>
+    <div id="overlay">
+      <div class="overlay-bottom">
+        <div class="live-badge">
+          <div class="live-dot"></div>
+          <span class="live-text">Live</span>
+        </div>
+        <div class="reconnect-badge" id="reconnectBadge">Reconnecting...</div>
+      </div>
+    </div>
+  </div>
 
-    window.phonecam.onServerReady(({ ip, port }) => {
-      addressEl.innerHTML = `https://${ip}<span>:${port}</span>`
-      card.classList.add('visible')
-      dot.className = 'dot ready'
-      statusLabel.textContent = 'Waiting for iPhone...'
-    })
+<script>
+const dot           = document.getElementById('dot')
+const statusLabel   = document.getElementById('statusLabel')
+const card          = document.getElementById('card')
+const addressEl     = document.getElementById('address')
+const waitScreen    = document.getElementById('waitScreen')
+const videoScreen   = document.getElementById('videoScreen')
+const remoteVideo   = document.getElementById('remoteVideo')
+const reconnectBadge = document.getElementById('reconnectBadge')
 
-    window.phonecam.onPhoneConnected(() => {
-      dot.className = 'dot connected'
-      statusLabel.textContent = 'Streaming'
-      connectedMsg.classList.add('visible')
-    })
+let pc = null
+let pendingCandidates = []
 
-    window.phonecam.onPhoneDisconnected(() => {
-      dot.className = 'dot ready'
-      statusLabel.textContent = 'Waiting for iPhone...'
-      connectedMsg.classList.remove('visible')
-    })
-  </script>
+// ── Server ready ──────────────────────────────
+window.phonecam.onServerReady(({ ip, phonePort }) => {
+  console.log('[pc] server-ready', ip, phonePort)
+  addressEl.innerHTML = `https://${ip}<span>:${phonePort}</span>`
+  card.classList.add('visible')
+  dot.className = 'dot ready'
+  statusLabel.textContent = 'Waiting for iPhone...'
+})
+
+window.phonecam.onPhoneConnected(() => {
+  console.log('[pc] phone connected')
+  dot.className = 'dot connected'
+  statusLabel.textContent = 'Streaming'
+})
+
+window.phonecam.onPhoneDisconnected(() => {
+  console.log('[pc] phone disconnected')
+  // Сбрасываем UI только если WebRTC стрим не активен
+  const streaming = pc && pc.connectionState === 'connected'
+  if (!streaming) {
+    dot.className = 'dot ready'
+    statusLabel.textContent = 'Waiting for iPhone...'
+    videoScreen.classList.remove('visible')
+    waitScreen.classList.remove('hidden')
+    if (pc) { pc.close(); pc = null }
+  }
+})
+
+// ── Signaling через IPC ───────────────────────
+window.phonecam.onPhoneSignal(async (msg) => {
+  console.log('[pc] phone-signal received:', msg.type ?? 'candidate')
+  if (msg.type === 'offer') {
+    await handleOffer(msg)
+  } else if (msg.candidate !== undefined) {
+    if (pc && pc.remoteDescription) {
+      await pc.addIceCandidate(new RTCIceCandidate(msg)).catch(e => console.warn('[pc] addIceCandidate error:', e))
+    } else {
+      pendingCandidates.push(msg)
+    }
+  }
+})
+
+// ── WebRTC ────────────────────────────────────
+async function handleOffer(offer) {
+  console.log('[pc] handleOffer start')
+  if (pc) { pc.close() }
+  pendingCandidates = []
+
+  pc = new RTCPeerConnection({
+    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+  })
+
+  pc.ontrack = (e) => {
+    console.log('[pc] ontrack:', e.track.kind)
+    if (e.track.kind === 'video') {
+      remoteVideo.srcObject = e.streams[0]
+      waitScreen.classList.add('hidden')
+      videoScreen.classList.add('visible')
+      reconnectBadge.classList.remove('visible')
+    }
+  }
+
+  pc.onicecandidate = ({ candidate }) => {
+    if (candidate) {
+      console.log('[pc] sending ICE candidate')
+      window.phonecam.sendSignal(candidate.toJSON())
+    }
+  }
+
+  pc.onconnectionstatechange = () => {
+    console.log('[pc] connection state:', pc.connectionState)
+    const s = pc.connectionState
+    if (s === 'failed' || s === 'disconnected') {
+      reconnectBadge.classList.add('visible')
+    } else if (s === 'connected') {
+      reconnectBadge.classList.remove('visible')
+    }
+  }
+
+  pc.oniceconnectionstatechange = () => {
+    console.log('[pc] ICE state:', pc.iceConnectionState)
+  }
+
+  await pc.setRemoteDescription(new RTCSessionDescription(offer))
+  console.log('[pc] remote description set, applying', pendingCandidates.length, 'queued candidates')
+
+  for (const c of pendingCandidates) {
+    await pc.addIceCandidate(new RTCIceCandidate(c)).catch(() => {})
+  }
+  pendingCandidates = []
+
+  const answer = await pc.createAnswer()
+  await pc.setLocalDescription(answer)
+  console.log('[pc] answer created, sending to phone')
+  window.phonecam.sendSignal(answer)
+}
+</script>
 </body>
 </html>

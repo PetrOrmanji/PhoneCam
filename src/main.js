@@ -3,6 +3,16 @@ const path = require('path')
 const { createServer } = require('./server')
 
 let mainWindow
+let sendToPhone = null
+
+app.on('certificate-error', (event, webContents, url, error, certificate, callback) => {
+  if (url.startsWith('wss://localhost') || url.startsWith('https://localhost')) {
+    event.preventDefault()
+    callback(true)
+  } else {
+    callback(false)
+  }
+})
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -21,34 +31,39 @@ function createWindow() {
   })
 
   mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'))
-
-  mainWindow.once('ready-to-show', () => {
-    mainWindow.show()
-  })
+  mainWindow.once('ready-to-show', () => mainWindow.show())
 }
 
 app.whenReady().then(async () => {
   createWindow()
 
+  // Renderer → Main: signaling ответ (answer / ICE от PC)
+  ipcMain.on('pc-signal', (_, msg) => {
+    sendToPhone?.(msg)
+  })
+
   try {
-    const { ip, port } = await createServer(
-      () => {
-        // iPhone подключился
+    const result = await createServer({
+      onPhoneConnected: () => {
         mainWindow?.webContents.send('phone-connected')
       },
-      () => {
-        // iPhone отключился
+      onPhoneDisconnected: () => {
         mainWindow?.webContents.send('phone-disconnected')
+      },
+      onPhoneMessage: (msg) => {
+        // Main → Renderer: signaling от iPhone (offer / ICE от телефона)
+        mainWindow?.webContents.send('phone-signal', msg)
       }
-    )
-
-    // Сообщаем renderer адрес сервера
-    mainWindow.webContents.on('did-finish-load', () => {
-      mainWindow.webContents.send('server-ready', { ip, port })
     })
 
-    // Если окно уже загружено до старта сервера
-    mainWindow?.webContents.send('server-ready', { ip, port })
+    sendToPhone = result.sendToPhone
+
+    const serverInfo = { ip: result.ip, phonePort: result.port }
+
+    mainWindow.webContents.on('did-finish-load', () => {
+      mainWindow.webContents.send('server-ready', serverInfo)
+    })
+    mainWindow?.webContents.send('server-ready', serverInfo)
 
   } catch (err) {
     console.error('[main] Failed to start server:', err)
