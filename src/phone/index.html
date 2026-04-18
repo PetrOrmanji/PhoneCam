@@ -389,22 +389,24 @@ async function enumerateCameras() {
   for (const d of all) {
     const l = d.label.toLowerCase()
 
-    const isFront    = l.includes('front') || l.includes('передн') || l.includes('truedepth')
-    const isUltra    = l.includes('ultra') || l.includes('сверх')
-    const isWide     = l.includes('wide') || l.includes('широкоугол')
-    const isTele     = l.includes('telephoto') || l.includes('телеобъ')
+    const isFront   = l.includes('front')     || l.includes('передн')   || l.includes('truedepth')
+    const isUltra   = l.includes('ultra')     || l.includes('сверх')
+    const isTele    = l.includes('telephoto') || l.includes('телеобъ')
+    // Виртуальные мульти-камеры — пропускаем
+    const isVirtual = l.includes('triple')    || l.includes('тройная')
+                   || l.includes('dual')      || l.includes('двойная')
 
-    if (isTele) continue  // телеобъектив — пропускаем
+    if (isTele || isVirtual) continue
 
     if (isFront) {
       cameras.push({ device: d, label: 'Front' })
     } else if (isUltra) {
       cameras.push({ device: d, label: '0.5x' })
-    } else if (isWide) {
-      // "широкоугольная" без "сверх" = основная 1x
+    } else {
+      // Любая другая задняя камера = 1x
+      // (wide angle, back camera, задняя камера и т.д.)
       cameras.push({ device: d, label: '1x' })
     }
-    // всё остальное (тройная, двойная, задней панели) — пропускаем
   }
 
 
