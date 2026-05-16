@@ -315,6 +315,8 @@
   <!-- Camera screen -->
   <div id="cameraScreen">
     <div id="videoWrap">
+      <!-- rawVideo — источник для canvas zoom, скрыт -->
+      <video id="rawVideo" autoplay playsinline muted style="display:none"></video>
       <video id="preview" autoplay playsinline muted></video>
       <div id="statusBar">
         <div class="status-dot" id="statusDot"></div>
@@ -375,6 +377,7 @@ const WS_URL = `wss://${location.host}?type=phone`
 const startScreen  = document.getElementById('startScreen')
 const cameraScreen = document.getElementById('cameraScreen')
 const preview      = document.getElementById('preview')
+const rawVideo     = document.getElementById('rawVideo')
 const cameraList   = document.getElementById('cameraList')
 const statusDot    = document.getElementById('statusDot')
 const statusText   = document.getElementById('statusText')
@@ -507,20 +510,26 @@ function stopCanvasZoom() {
   if (zoomAnimId) { cancelAnimationFrame(zoomAnimId); zoomAnimId = null }
   if (zoomStream) { zoomStream.getTracks().forEach(t => t.stop()); zoomStream = null }
   zoomCanvas = null; zoomCtx = null
+  // Возвращаем preview на сырой стрим
+  if (stream) preview.srcObject = stream
 }
 
 function startCanvasZoom() {
   stopCanvasZoom()
-  const w = preview.videoWidth  || (quality === '1080p' ? 1920 : 1280)
-  const h = preview.videoHeight || (quality === '1080p' ? 1080 : 720)
+  const w = rawVideo.videoWidth  || (quality === '1080p' ? 1920 : 1280)
+  const h = rawVideo.videoHeight || (quality === '1080p' ? 1080 : 720)
   zoomCanvas = document.createElement('canvas')
   zoomCanvas.width = w; zoomCanvas.height = h
   zoomCtx = zoomCanvas.getContext('2d')
-  zoomStream = zoomCanvas.captureStream(30);
+  zoomStream = zoomCanvas.captureStream(30)
+
+  // Показываем зумленный canvas в превью на телефоне
+  preview.srcObject = zoomStream;
+
   (function draw() {
     if (!zoomCtx) return
-    // Если телефон повернули — размеры видео изменились, обновляем canvas
-    const vw = preview.videoWidth, vh = preview.videoHeight
+    // При повороте телефона размеры меняются — обновляем canvas
+    const vw = rawVideo.videoWidth, vh = rawVideo.videoHeight
     if (vw && vh && (zoomCanvas.width !== vw || zoomCanvas.height !== vh)) {
       zoomCanvas.width = vw
       zoomCanvas.height = vh
@@ -528,7 +537,7 @@ function startCanvasZoom() {
     const cw = zoomCanvas.width, ch = zoomCanvas.height
     const sw = cw / zoomLevel, sh = ch / zoomLevel
     const sx = (cw - sw) / 2,  sy = (ch - sh) / 2
-    zoomCtx.drawImage(preview, sx, sy, sw, sh, 0, 0, cw, ch)
+    zoomCtx.drawImage(rawVideo, sx, sy, sw, sh, 0, 0, cw, ch)
     zoomAnimId = requestAnimationFrame(draw)
   })()
 }
@@ -574,13 +583,16 @@ async function startCamera() {
   stopCanvasZoom()
   if (stream) stream.getTracks().forEach(t => t.stop())
   stream = await navigator.mediaDevices.getUserMedia(getConstraints())
-  preview.srcObject = stream
+
+  // rawVideo — всегда показывает сырой стрим (источник для canvas)
+  rawVideo.srcObject = stream
+  preview.srcObject  = stream
 
   if (zoomLevel > 1) {
     // Ждём первый кадр, потом запускаем canvas
     await new Promise(r => {
-      if (preview.videoWidth) { r(); return }
-      preview.addEventListener('loadedmetadata', r, { once: true })
+      if (rawVideo.videoWidth) { r(); return }
+      rawVideo.addEventListener('loadedmetadata', r, { once: true })
     })
     startCanvasZoom()
   }
