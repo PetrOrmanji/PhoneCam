@@ -1,10 +1,28 @@
 const { app, BrowserWindow, ipcMain } = require('electron')
 const path = require('path')
+const fs   = require('fs')
 const QRCode = require('qrcode')
 const { createServer } = require('./server')
 
 let mainWindow
 let sendToPhone = null
+
+// ── Запоминаем размер и позицию окна ──────────
+const STATE_FILE = path.join(app.getPath('userData'), 'window-state.json')
+
+function loadWindowState() {
+  try {
+    return JSON.parse(fs.readFileSync(STATE_FILE, 'utf8'))
+  } catch {
+    return { width: 960, height: 640 } // дефолт при первом запуске
+  }
+}
+
+function saveWindowState() {
+  if (!mainWindow || mainWindow.isMinimized() || mainWindow.isMaximized()) return
+  const b = mainWindow.getBounds()
+  fs.writeFileSync(STATE_FILE, JSON.stringify(b))
+}
 
 app.on('certificate-error', (event, webContents, url, error, certificate, callback) => {
   if (url.startsWith('wss://localhost') || url.startsWith('https://localhost')) {
@@ -16,14 +34,17 @@ app.on('certificate-error', (event, webContents, url, error, certificate, callba
 })
 
 function createWindow() {
+  const state = loadWindowState()
+
   mainWindow = new BrowserWindow({
-    width: 960,
-    height: 640,
-    minWidth: 700,
-    minHeight: 500,
+    ...state,
+    minWidth: 400,
+    minHeight: 300,
     backgroundColor: '#0a0a0a',
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     frame: process.platform !== 'darwin' ? false : true,
+    roundedCorners: false,
+    fullscreenable: false,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -34,6 +55,11 @@ function createWindow() {
 
   mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'))
   mainWindow.once('ready-to-show', () => mainWindow.show())
+
+  // Сохраняем состояние при изменении размера/позиции
+  mainWindow.on('resize', saveWindowState)
+  mainWindow.on('move',   saveWindowState)
+  mainWindow.on('close',  saveWindowState)
 }
 
 app.whenReady().then(async () => {
